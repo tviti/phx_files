@@ -42,68 +42,7 @@ import subprocess
 import datetime
 from sys import platform
 
-# Numpy dtypes found in a TBL file, indexed by the string valued
-# type codes produced by PRNTTBL.
-TBL_types = {"Int": np.int32,
-             "Flt": "d",
-             "Str": "S8",
-             "UTC": "U8",
-             "Pos": "S13",
-             "Amx": ("U8", 8)}
-
-# dtype for a numpy object storing an entire .TBL file
-# Field descriptions are taken from [2]
-TBL_dt = np.dtype([("EGN", TBL_types["Int"]),  # E ch gain (10, 40, or 160)
-                   ("HGN", TBL_types["Int"]),  # H ch gain (3, 12, or 48)
-                   ("ACDC", TBL_types["Int"]),  # E ch coupling (0 for DC)
-                   ("ACDH", TBL_types["Int"]),  # H ch coupling (0 for DC)
-                   ("LPFR", TBL_types["Int"]),  # E&H LPF setting (1, 2, or 3)
-                   ("SITE", TBL_types["Str"]),  # Site ID
-                   ("FILE", TBL_types["Str"]),  # File name for data files
-                   ("STIM", TBL_types["Amx"]),  # Start time for aquisition
-                   ("HTIM", TBL_types["Amx"]),  # Level 3 & 4 start time
-                   ("ETIM", TBL_types["Amx"]),  # End time for acquisition
-                   ("ETIMH", TBL_types["Amx"]),  # End time for high range
-                   ("CMPY", TBL_types["Str"]),  # Company name
-                   ("SRVY", TBL_types["Str"]),  # Survey ID
-                   ("EAZM", TBL_types["Flt"]),  # Ex azimuth (deg from True N)
-                   ("EXLN", TBL_types["Flt"]),  # Ex dipole length (m)
-                   ("EYLN", TBL_types["Flt"]),  # Ey dipole length (m)
-                   ("HAZM", TBL_types["Flt"]),  # Hx azimuth (deg from true N)
-                   ("HXSN", TBL_types["Str"]),  # Hx sensor serial number
-                   ("HYSN", TBL_types["Str"]),  # Hy sensor serial number
-                   ("HZSN", TBL_types["Str"]),  # Hz sensor serial number
-                   ("SNUM", TBL_types["Int"]),  # MTU serial number
-                   ("HW", TBL_types["Str"]),  # Box type
-                   ("ELEV", TBL_types["Int"]),  # Elevatiom from GPS (m)
-                   ("LATG", TBL_types["Pos"]),  # GPS lat (degrees minutes)
-                   ("LNGG", TBL_types["Pos"]),  # GPS lon (degrees minutes)
-                   ("EXAC", TBL_types["Flt"]),  # Ex AC measurement (Volts)
-                   ("EXDC", TBL_types["Flt"]),  # Ex DC measurement (Volts)
-                   ("EYAC", TBL_types["Flt"]),  # Ey AC measurement (Volts)
-                   ("EYDC", TBL_types["Flt"]),  # Ey DC measurement (Volts)
-                   ("HXAC", TBL_types["Flt"]),  # ?
-                   ("HXDC", TBL_types["Flt"]),
-                   ("HYAC", TBL_types["Flt"]),
-                   ("HYDC", TBL_types["Flt"]),
-                   ("HZAC", TBL_types["Flt"]),
-                   ("HZDC", TBL_types["Flt"]),
-                   ("EXR", TBL_types["Int"]),  # Ex pot resistance (Ohms)
-                   ("EYR", TBL_types["Int"]),  # Ey pot resistance (Ohms)
-                   ("VER", TBL_types["Str"]),
-                   ("FSCV", TBL_types["Flt"]),  # Full Scale Voltage (V)
-                   ("HATT", TBL_types["Flt"]),
-                   ("HNOM", TBL_types["Flt"])])
-
-# Numpy dtype object for a single entry in a TBL file
-TBL_entry_dt = np.dtype([("Code", bytes, 5),
-                         ("Grp", np.uint8, 2),  # Used internal by MTU
-                         ("Smph", np.uint8, 4),  # Used internal by MTU
-                         ("Type", np.int8, 1),  # Datatype code (see [2])
-                         ("V", np.uint8, 13)])
-
-# Bytelengths for the different entry data types (from MTU-TSER.pdf)
-TBL_entry_bl = [4, 8, 9, 8, 13, 8]
+from IPython.core.debugger import set_trace
 
 # Numpy dtype object specifying the fields present in data block
 TAG_dt = np.dtype([("second", np.uint8),
@@ -234,82 +173,102 @@ def read_TBL(fname):
         fname (str): path to the .TBL file to read
 
     Returns:
-        TBL (np.array): array of table entries (dtype=TBL_dt)
+        TBL : dict of table entries
     """
 
-    tbl_file = open(fname)
+    TBL = dict()
+    with open(fname, mode="rb") as file:
+        data = file.read()
 
-    # Read the table file to a TBL_dt object
-    entries = np.fromfile(tbl_file, dtype=TBL_entry_dt)
+    stride = 25  # number of bytes per record of data
+    if len(data) % stride != 0:
+        raise Exception("Record length does not evenly divide data file!")
 
-    # Create an empty TBL file container
-    TBL = np.empty((1), dtype=TBL_dt)
-    for entry in entries:
-        code = entry["Code"].decode("utf-8")
-        dtype = entry["Type"]
-        val = entry["V"]
+    N_rec = int(len(data)/stride)
 
-        if code in TBL_dt.names:
-            val = val[0:TBL_entry_bl[dtype]]
-            val_str = val.tostring()
+    for i in range(N_rec):
+        i0 = stride*i
+        i1 = stride*(i+1)
+        rec = data[i0:i1]
 
-            # If entry is a string type, do something special
-            if dtype in (2, 3, 4):  # String types (e.g. UTC)
-                TBL[code] = val_str
-            elif dtype == 1:  # Double precision float
-                TBL[code] = struct.unpack("<d", val_str)
-            elif dtype == 5:  # AMX type
-                TBL[code] = val
-            else:  # Anything else is an integer
-                TBL[code] = struct.unpack("<i", val_str)
+        Code = rec[0:5].split(b"\0")[0].decode("utf-8")
+        # Last record is always signified with an ETX. Exit if we've hit it
+        if Code == '\x03':
+            break
 
-    tbl_file.close()
+        # Grp and Smph are only used by the MTU. Ignore
+        # Grp = struct.unpack("<h", rec[5:7])
+        # Smph = struct.unpack("<i", rec[7:11])
+
+        Type = rec[11]
+        if Type in (2, 3, 4):  # String types
+            V = rec[12:].split(b"\0")[0].decode("utf-8")
+        elif Type == 1:  # Double prec float
+            V = struct.unpack("<1d", rec[12:20])[0]
+        elif Type == 5:  # AMX type code
+            V = struct.unpack("<8B", rec[12:20])
+            # Convert to a proper datetime obj
+            # V = AMX_to_datetime(V)
+        else:  # Everything else is an int
+            V = struct.unpack("<1i", rec[12:16])[0]
+
+        TBL[Code] = V
+
+    # Convert lat and long to something more sensible
+    LATG = TBL["LATG"]
+    NS = LATG[-1]
+
+    LNGG = TBL["LNGG"]
+    EW = LNGG[-1]
+
+    TBL["LATG"] = ((-1 if NS == "S" else 1)*int(LATG[0:2]), float(LATG[2:-2]))
+    TBL["LNGG"] = ((-1 if EW == "W" else 1)*int(LNGG[0:3]), float(LNGG[3:-2]))
 
     return TBL
 
 
-def read_TBL_txt(fname):
-    """ Read .txt files created by the program PRNTTBL.EXE.
-    PRNTTBL will convert Phoenix .TBL files into an ascii .txt
-    file.
+# def read_TBL_txt(fname):
+#     """ Read .txt files created by the program PRNTTBL.EXE.
+#     PRNTTBL will convert Phoenix .TBL files into an ascii .txt
+#     file.
 
-    Each line in a TBL.txt is formatted as
-        code, , , type, val
+#     Each line in a TBL.txt is formatted as
+#         code, , , type, val
 
-    Args:
-        fname (str): path to the .txt file to be read
+#     Args:
+#         fname (str): path to the .txt file to be read
 
-    Returns:
-        TBL (np.array): array of table entries (dtype=TBL_dt)
-    """
+#     Returns:
+#         TBL (np.array): array of table entries (dtype=TBL_dt)
+#     """
 
-    tbl_file = open(fname)
+#     tbl_file = open(fname)
 
-    # Create an empty TBL file container
-    TBL = np.empty((1), dtype=TBL_dt)
+#     # Create an empty TBL file container
+#     TBL = np.empty((1), dtype=TBL_dt)
 
-    for line in tbl_file:
-        code = line.split(",")[0]
+#     for line in tbl_file:
+#         code = line.split(",")[0]
 
-        # The NS/EW in lat and lon are seperated from the rest
-        # of the value field by a comma, so we have to take the
-        # entire set of trailing elements of the split to make
-        # sure we can catch it. For all other fields, the 4th
-        # element actually is the -1th element.
-        val = line.split(",")[4:-1]
-        # Recombine the elements comprising value
-        val = " ".join(val)
+#         # The NS/EW in lat and lon are seperated from the rest
+#         # of the value field by a comma, so we have to take the
+#         # entire set of trailing elements of the split to make
+#         # sure we can catch it. For all other fields, the 4th
+#         # element actually is the -1th element.
+#         val = line.split(",")[4:-1]
+#         # Recombine the elements comprising value
+#         val = " ".join(val)
 
-        # Trim whitespace from the strings
-        code = code.strip()
-        val = val.strip()
+#         # Trim whitespace from the strings
+#         code = code.strip()
+#         val = val.strip()
 
-        if code in TBL.dtype.names:
-            TBL[code] = val
+#         if code in TBL.dtype.names:
+#             TBL[code] = val
 
-    tbl_file.close()
+#     tbl_file.close()
 
-    return TBL
+#     return TBL
 
 
 def read_cts(fname):
@@ -472,13 +431,14 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
 
     # Call SYSCAL
     subprocess.check_call(SYSCAL_cmd)
-    #proc = subprocess.Popen(SYSCAL_cmd)
-    #proc.communicate("0")
-    #proc.wait()
+    # proc = subprocess.Popen(SYSCAL_cmd)
+    # proc.communicate("0")
+    # proc.wait()
 
     G, field_type_out = read_cts(cts_fname)
 
     return G
+
 
 def rec_to_fields(rec, TBL):
     """Convert a record in instrument units to EM field units
@@ -514,23 +474,51 @@ def rec_to_fields(rec, TBL):
 
     return field
 
+
 def get_TAG_datetime(TAG):
     """Returns the record start time from the tag TAG as a datetime object.
-    
+
     It might be useful to also have this return the clock offset from GPS time.
-    
+
     Args:
         TAG (np.ndarray): a single TAG (as in those returned from read_TSn)
-        
+
     returns:
         stim (datetime.datetime): a datetime object containing the record start.
     """
-    
+
     stim = datetime.datetime(TAG["year"],
                              TAG["month"],
                              TAG["day"],
                              TAG["hour"],
                              TAG["minute"],
                              TAG["second"])
-    
+
     return stim
+
+
+def AMX_to_datetime(amx):
+    """ Convert the weird Phoenix AMX datetime format to a Python datetime object
+
+    If the input amx array contains invalid values for a datetime object
+    (e.g. a negative year) then the output datetime object will be set
+    to datetime.date.min
+
+    Args:
+        amx: 8 element long int array following the Amx format in [2]
+    Returns:
+        dt: datetime.datetime object
+    """
+    # Some of the TABLE entries that use the AMX datetype will end up with
+    # invalid datetimes. Just set these to the min allowable datetime
+    try:
+        dt = datetime.datetime(second=amx[0],
+                               minute=amx[1],
+                               hour=amx[2],
+                               day=amx[3],
+                               month=amx[4],
+                               year=amx[5])
+    except ValueError:
+        dt = datetime.date.min
+
+    return dt
