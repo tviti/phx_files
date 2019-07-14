@@ -449,7 +449,7 @@ def get_TAG_datetime(TAG):
         stim (datetime.datetime): a datetime object containing the record start.
     """
 
-    stim = datetime.datetime(TAG["year"],
+    stim = datetime.datetime(int(TAG["century"])*100 + int(TAG["year"]),
                              TAG["month"],
                              TAG["day"],
                              TAG["hour"],
