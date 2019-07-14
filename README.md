@@ -14,3 +14,9 @@ They are given as `degrees` and `decimal minutes`, with no seperator between the
 and
 
 `LNGG = DDDMM.MM`
+
+## Datetime formats
+
+The format for the `STIM` and `ETIM` fields is as follows
+
+`val = ['s', 'min', 'h', 'day', 'month', 'year', 'day of week', 'century']`
