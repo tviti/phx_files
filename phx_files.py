@@ -68,63 +68,6 @@ TAG_dt = np.dtype([("second", np.uint8),
                    ("reserved2", np.uint8, (6, ))])  # reserved (MUST BE ZERO)
 
 
-def read_record(f):
-    """Read a single pair of TAG and record data from the file object f.
-    Assumes that the TAG is 32 bytes long, hence this function
-    will not work with older Phoenix instruments that output 16
-    byte long TAGs.
-
-    The file position of f must be at the start of the TAG for the
-    record to be read. After completing, the file position will
-    be located at the start of the TAG for the next record.
-
-    The return value will be empty if there was no TAG/RECORD pair
-    left to read from the file object.
-
-    Args:
-        f (file): file object created from a TSn file
-
-    Returns:
-        (tuple): tuple containing
-
-        TAG (numpy.ndarray): structured array with the TAG data for the record
-        rec_data (np.ndarray): samples by ch array with the record data
-
-    Both TAG and rec_data will be empty if there was nothing in f to read.
-    """
-
-    # Read the TAG
-    TAG = np.fromfile(f, dtype=TAG_dt, count=1)
-
-    # Return empty objects if we've hit the EOF
-    if TAG.size < 1:
-        return (None, None)
-
-    # Preallocate space for the record
-    rec_data = np.empty([TAG["SC"][0], TAG["CH"][0]],
-                        dtype=np.int32)
-
-    # Fill the record matrix with scans
-    # NOTE: This code hinges on the assumption that scans are stored as
-    # 24 bit twos complement
-    for scan in rec_data:
-        # Read the next scan (3 bytes per sample)
-        scan_tmp = [f.read(3) for i in range(TAG["CH"][0])]
-
-        # Convert the samples to integers in instrument units
-        #scan_tmp = [struct.unpack("<i",
-        #                          samp + (b"\x00" if samp[2] < 128 else b"\xff"))
-        #            for samp in scan_tmp]
-        scan_tmp = [struct.unpack("<i",
-                                  samp + (b"\x00" if samp[2] < "\x80" else b"\xff"))
-                    for samp in scan_tmp]
-
-        # Place the scan in the record array
-        scan[...] = np.asarray(scan_tmp, dtype=np.int32)[:, 0]
-
-    return (TAG, rec_data)
-
-
 def read_TSn(fname):
     """ Read in all records and TAGS from a TSn file created by
     a Phoenix Geophysics MTU receiver. Note that this function assumes
@@ -144,23 +87,42 @@ def read_TSn(fname):
             recs (list): list of record arrays as returned by read_record
     """
 
-    # Declare the TAG and records lists
+    # Init empty TAG and records lists
     TAGs = []
     recs = []
 
-    # Open the TSn file in binary read mode
-    ts_file = open(fname, mode='rb')
+    with open(fname, mode="rb") as ts_file:
+        data = ts_file.read()
 
-    # Read the TAGs and records from the file
-    TAG, rec = read_record(ts_file)
-    while (TAG is not None) and (rec is not None):
+    N_bytes = len(data)
+    i = 0
+    while i + 32 < N_bytes:
+        TAG = np.frombuffer(data[i:(i+32)], dtype=TAG_dt)
+        SC = TAG["SC"][0]
+        CH = TAG["CH"][0]
+
+        # Increment the iterator to the end of the TAG
+        i = i + 32
+
+        # Find the end of the record
+        i_end = i + 3*SC*CH
+        if i_end > N_bytes:
+            i_end = N_bytes
+
+        # Read in ALL the scans at once!
+        rec = [data[j:(j+3)] for j in range(i, i_end, 3)]
+        # Convert from 24 bit two's complement to normal integers
+        rec = [struct.unpack("<i", samp + (b"\x00" if samp[2] < 128 else b"\xff"))[0] for samp in rec]
+
+        # Reshape the rec based on the number of recs ACTUALLY read
+        rec = np.array(rec)
+        rec.shape = (SC, CH)
+
         TAGs.append(TAG)
         recs.append(rec)
 
-        TAG, rec = read_record(ts_file)
-
-    # Close the TSn file
-    ts_file.close()
+        # increment the iterator to the next rec
+        i = i_end
 
     return (TAGs, recs)
 
