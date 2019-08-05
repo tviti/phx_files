@@ -127,18 +127,53 @@ def read_TSn(fname):
     return (TAGs, recs)
 
 
+# def write_TBL(fname, TBL, grps, smphs, types):
+#     """ Write a Phoenix .TBL file.
+
+#     Note that unless all of the necessary fields are present in the .TBL file,
+#     there's a good chance it will be useless for running an actual MTU. Thus,
+#     this function is only intended to be useful for editing .TBL files that
+#     have a few incorrect settings.
+
+#     Args:
+
+#     Returns:
+#     """
+
+#     with open(fname, mode="wb") as file:
+#         for k in tbl.keys():
+
+#             # Write the 5 character field code
+#             bytestr = bytes(k, "utf-8")
+#             struct.pack("I")
+
+
 def read_TBL(fname):
     """ Read a .TBL file created by a Phoenix Geophysics MTU
     receiver.
 
+    The actual datatypes associated with each integer type code
+    is referenced from [2].
+
+    grps and smphs are only useful if you intend to write to a new .TBL
+
+    The Phoenix .TBL files are always terminated with a ascii ETX, which
+    this function excludes from the output dictionaries
+    
     Args:
         fname (str): path to the .TBL file to read
 
     Returns:
         TBL : dict of table entries
+        grps: dict of group codes
+        smphs: dict of semaphore codes
+        types : dict of integer type codes
     """
 
     TBL = dict()
+    grps = dict()
+    smphs = dict()
+    types = dict()
     with open(fname, mode="rb") as file:
         data = file.read()
 
@@ -158,9 +193,9 @@ def read_TBL(fname):
         if Code == '\x03':
             break
 
-        # Grp and Smph are only used by the MTU. Ignore
-        # Grp = struct.unpack("<h", rec[5:7])
-        # Smph = struct.unpack("<i", rec[7:11])
+        # Grp and Smph are only used by the MTU
+        Grp = struct.unpack("<H", rec[5:7])[0]
+        Smph = struct.unpack("<i", rec[7:11])[0]
 
         Type = rec[11]
         if Type in (2, 3, 4):  # String types
@@ -175,6 +210,9 @@ def read_TBL(fname):
             V = struct.unpack("<1i", rec[12:16])[0]
 
         TBL[Code] = V
+        grps[Code] = Grp
+        smphs[Code] = Smph
+        types[Code] = Type
 
     # Convert lat and long to something more sensible
     LATG = TBL["LATG"]
@@ -186,8 +224,7 @@ def read_TBL(fname):
     TBL["LATG"] = ((-1 if NS == "S" else 1)*int(LATG[0:2]), float(LATG[2:-2]))
     TBL["LNGG"] = ((-1 if EW == "W" else 1)*int(LNGG[0:3]), float(LNGG[3:-2]))
 
-    return TBL
-
+    return (TBL, grps, smphs, types)
 
 # def read_TBL_txt(fname):
 #     """ Read .txt files created by the program PRNTTBL.EXE.
@@ -371,6 +408,12 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
 
     PFC_file.close()
 
+    # Make sure the cal dirs point to INSIDE the dir
+    if(CLB_dir[-1] != "/"):
+        CLB_dir = CLB_dir + "/"
+    if(CLC_dir[-1] != "/"):
+        CLC_dir = CLC_dir + "/"
+    
     # Since we assume that we're on a *NIX box, we need to convert
     # all paths for the cmd to windows format, using winepath.
     winepath_cmd = ["winepath", "-w"]
@@ -402,7 +445,7 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
     return G
 
 
-def rec_to_fields(rec, TBL):
+def rec_to_fields(rec, TBL, mt_units=False):
     """Convert a record in instrument units to EM field units
     field units: V/m for E channels, T for H channels, following
     the formula provided in [5] p 6.
@@ -419,6 +462,7 @@ def rec_to_fields(rec, TBL):
     Args:
         rec (np.ndarray): a (scans x channels) record of data
         TBL (np.ndarray): the associated TAG object for rec
+        mt_units (bool): Whether or not to return mt units of mV/km and nT
 
     Returns:
         field (np.ndarray): a record of data in field units
@@ -427,6 +471,10 @@ def rec_to_fields(rec, TBL):
     # Compute intermediate scale factors for E and H channels
     E_0 = TBL["FSCV"]/(2**23)/TBL["EGN"]
     H_0 = TBL["FSCV"]/(2**23)/TBL["HGN"]/TBL["HATT"]/TBL["HNOM"]*1.0e-9
+
+    if mt_units:
+        E_0 = E_0*1.0e6
+        H_0 = H_0*1.0e9
 
     # Do the conversion
     field = np.empty(rec.shape)
