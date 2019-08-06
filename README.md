@@ -4,6 +4,8 @@ A set of `python` functions for reading `.TSn` and `.TBL` files produced by a Ph
 
 This library may work with data files produced by other Phoenix brand receivers, but is only tested with `MTU-5A` data.
 
+I am also trying to include utilities that I have developed during my time working with Phoenix data, that I think might be useful for other people.
+
 ## Latitude and Longtitude formats
 
 The format for the `LATG` and `LNGG` fields in the `.TBL` files is a little confusing (well... it confused me at first).
