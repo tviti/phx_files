@@ -10,6 +10,8 @@ If anybody is interested in seeing this library updated to work with the 32 bit 
 Given a path to the Phoenix utility `SysCal.exe` (along with the directories containing the requisite `.clb` and `.clc` box and sensor calibration files), the function `get_syscal` can generate system response functions that can be used for calibration.
 Note that prior to performing the deconvolution, the data first should be transformed to unit scale (i.e. scaled by 1.0/2**23 for 24 bit data).
 `get_syscal` is also currently only written to work on a Mac or Linux machine that has Wine installed, but could be easily modified to work on a windows machine as well (lmk if that is something that you’d be interested in).
+	     * Also important for calibration: the Phoenix `MTC-150` coils (and possibly their other models as well) actually record the NEGATIVE of the magnetic field!
+	     So, you need to either take the negative of the H-field channels prior to processing, or instruct your processing routine to rotate the data by 180 degrees.
 
 I am also trying to include utilities that I have developed during my time working with Phoenix data, that I think might be useful for other people.
 These can be found in the `examples` dir.
