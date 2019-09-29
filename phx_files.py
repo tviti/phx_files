@@ -47,8 +47,6 @@ import subprocess
 import datetime
 from sys import platform
 
-from IPython.core.debugger import set_trace
-
 # Numpy dtype object specifying the fields present in data block
 TAG_dt = np.dtype([("second", np.uint8),
                    ("minute", np.uint8),
