@@ -315,7 +315,7 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
         G (np.ndarray): complex (freqs x 2+channels) array of channel TFs
     """
 
-    if platform is "win32" or platform is "cygwin":
+    if platform == "win32" or platform == "cygwin":
         raise NotImplementedError("This function isn't (yet) written" +
                                   "for win32 platforms!")
 
