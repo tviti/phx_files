@@ -117,7 +117,9 @@ def read_TSn(fname):
         # Read in ALL the scans at once!
         rec = [data[j:(j+3)] for j in range(i, i_end, 3)]
         # Convert from 24 bit two's complement to normal integers
-        rec = [struct.unpack("<i", samp + (b"\x00" if samp[2] < 128 else b"\xff"))[0] for samp in rec]
+        rec = [struct.unpack("<i",
+                             samp + (b"\x00" if samp[2] < 128 else b"\xff"))[0]
+               for samp in rec]
 
         # Reshape the rec based on the number of recs ACTUALLY read
         rec = np.array(rec)
