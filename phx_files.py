@@ -1,37 +1,42 @@
-# Python module with functions for reading and writing various Phoenix
-# data files.
+# Python module with functions for reading and writing various Phoenix data
+# files.
 #
 # These aren't all fully implemented yet, but the goal is for this software
 # package to be able to read files with .TBL, .TSn, and .MT extensions. It
 # would be nice to also be able to read .CSC and .CLB files, but it appears
-# that the format for these is proprietary without open documentation,
-# so for now we're stuck with using the Phoenix windows cmdline utility
-# SYSCAL.exe for converting these to system transfer functions. Thankfully,
-# SYSCAL.exe will run without a license for Phoenix, and runs on *NIX
-# platforms through wine.
+# that the format for these is proprietary without open documentation, so for
+# now we're stuck with using the Phoenix windows cmdline utility SYSCAL.exe for
+# converting these to system transfer functions. Thankfully, SYSCAL.exe will
+# run without a license for Phoenix, and runs on *NIX platforms through wine.
 #
-# The system for storing MT data in .TSn files described in [1] revolves
-# around three central data objects: Tables, TAGs and records.
-# A record is a window of data recorded with a specific set of MTU
-# acquisition settings, with the acquisition settings (e.g. window start
-# and end times, sampling rate, number of samples) stored in a TAGs and TBLs.
-# A complete set of samples (one for each MTU channel) comprises a scan,
-# with multiple scans comprising a single record.
+# The system for storing MT data in .TSn files described in [1] revolves around
+# three central data objects: Tables, TAGs and records.  A record is a window
+# of data recorded with a specific set of MTU acquisition settings, with the
+# acquisition settings (e.g. window start and end times, sampling rate, number
+# of samples) stored in a TAGs and TBLs.  A complete set of samples (one for
+# each MTU channel) comprises a scan, with multiple scans comprising a single
+# record.
 #
-# Table files (extension .TBL) contain survey parameters for a single
-# MT sounding (e.g. dipole lengths, sensor orientations, declination...).
-# Each MTU deployment can result in a number of .TBL files describing a
-# set of contiguous, uninterrupted soundings. A single sounding usually
-# records data at multiple sampling rates simultaneously, the data from
-# each of which is stored in the multiple .TSn files (i.e. each .TBL has
-# associated with it multiple .TSn files).
+# Table files (extension .TBL) contain survey parameters for a single MT
+# sounding (e.g. dipole lengths, sensor orientations, declination...).  Each
+# MTU deployment can result in a number of .TBL files describing a set of
+# contiguous, uninterrupted soundings. A single sounding usually records data
+# at multiple sampling rates simultaneously, the data from each of which is
+# stored in the multiple .TSn files (i.e. each .TBL has associated with it
+# multiple .TSn files).
 #
 # References:
-#    [1] Rogers, S. (2005). Data Processing User Guide V3.0. Toronto, ON Canada: Phoenix Geophysics Limited
-#    [2] Phoenix Geophysics Limited (N.D.), MTU Time Series Format. Toronto, ON Canada: Phoenix Geophysics Limited
-#    [3] Phoenix Geophysics Limited (2009), SysCal User Guide V1.1. Toronto, ON Canada: Phoenix Geophysics Limited
-#    [4] Phoenix Geophysics Limited (N.D.). MTC-150 Operating Instructions Ver2. Toronto, ON Canada: Phoenix Geophysics Limited
-#    [5] Phoenix Geophysics Limited (2015). Instrument and Sensor Calibration: Concepts and Utility Programs. Toronto, ON Canada: Phoenix Geophysics Limited
+#    [1] Rogers, S. (2005). Data Processing User Guide V3.0. Toronto, ON
+#    Canada: Phoenix Geophysics Limited
+#    [2] Phoenix Geophysics Limited (N.D.), MTU Time Series Format. Toronto, ON
+#    Canada: Phoenix Geophysics Limited
+#    [3] Phoenix Geophysics Limited (2009), SysCal User Guide V1.1. Toronto, ON
+#    Canada: Phoenix Geophysics Limited
+#    [4] Phoenix Geophysics Limited (N.D.). MTC-150 Operating Instructions
+#    Ver2. Toronto, ON Canada: Phoenix Geophysics Limited
+#    [5] Phoenix Geophysics Limited (2015). Instrument and Sensor Calibration:
+#    Concepts and Utility Programs. Toronto, ON Canada: Phoenix Geophysics
+#    Limited
 #
 # Author: Taylor Viti
 # Date Created: 05/12/18
@@ -69,14 +74,15 @@ TAG_dt = np.dtype([("second", np.uint8),
 
 
 def read_TSn(fname):
-    """ Read in all records and TAGS from a TSn file created by
-    a Phoenix Geophysics MTU receiver. Note that this function assumes
-    all TAGS follow the 32 byte TAG standard described in [1]. This
-    function will NOT work for reading older timeseries files that follow
-    the older 16 byte TAG standard (extensions .TSH and .TSL).
+    """
+    Read in all records and TAGS from a TSn file created by a Phoenix
+    Geophysics MTU receiver. Note that this function assumes all TAGS follow
+    the 32 byte TAG standard described in [1]. This function will NOT work for
+    reading older timeseries files that follow the older 16 byte TAG standard
+    (extensions .TSH and .TSL).
 
-    The records returned will be in integer valued instrument units, and
-    must be converted to field units.
+    The records returned will be in integer valued instrument units, and must
+    be converted to field units.
 
     Args:
         fname (str): path to the TSn file
@@ -85,6 +91,7 @@ def read_TSn(fname):
         tuple: tuple containing
             TAGs (list): list of TAG arrays as returned by read_record
             recs (list): list of record arrays as returned by read_record
+
     """
 
     # Init empty TAG and records lists
@@ -149,17 +156,17 @@ def read_TSn(fname):
 
 
 def read_TBL(fname):
-    """ Read a .TBL file created by a Phoenix Geophysics MTU
-    receiver.
+    """
+    Read a .TBL file created by a Phoenix Geophysics MTU receiver.
 
-    The actual datatypes associated with each integer type code
-    is referenced from [2].
+    The actual datatypes associated with each integer type code is referenced
+    from [2].
 
     grps and smphs are only useful if you intend to write to a new .TBL
 
-    The Phoenix .TBL files are always terminated with a ascii ETX, which
-    this function excludes from the output dictionaries
-    
+    The Phoenix .TBL files are always terminated with a ascii ETX, which this
+    function excludes from the output dictionaries
+
     Args:
         fname (str): path to the .TBL file to read
 
@@ -168,6 +175,7 @@ def read_TBL(fname):
         grps: dict of group codes
         smphs: dict of semaphore codes
         types : dict of integer type codes
+
     """
 
     TBL = dict()
@@ -271,36 +279,34 @@ def read_TBL(fname):
 
 
 def read_cts(fname):
-    """ Read the data from a .cts file created by SYSCAL.EXE
+    """Read the data from a .cts file created by SYSCAL.EXE
 
-    A .cts file contains transfer functions for each recording
-    channel, including the sensor and box responses. The data
-    is intended to be used for performing a deconvolution on
-    the records from each channel, in order to correct out the
-    instrument's response from the data.
+    A .cts file contains transfer functions for each recording channel,
+    including the sensor and box responses. The data is intended to be used for
+    performing a deconvolution on the records from each channel, in order to
+    correct out the instrument's response from the data.
 
-    If the function returns 0 for field_type, then the real and
-    imaginary parts of the responses have units of (V)^-1.
+    If the function returns 0 for field_type, then the real and imaginary parts
+    of the responses have units of (V)^-1.
 
-    If instead the field_type is 1, then the E channels have units
-    of (V/m)^-1, and the H channels have units of T^-1.
+    If instead the field_type is 1, then the E channels have units of (V/m)^-1,
+    and the H channels have units of T^-1.
 
-    The return value G follows the same format as the .cts file,
-    but with the channel responses stored as np.complex objects
-    (wheras in the .cts, they're stored as seperate columns for the
-    real and imaginary components).
+    The return value G follows the same format as the .cts file, but with the
+    channel responses stored as np.complex objects (wheras in the .cts, they're
+    stored as seperate columns for the real and imaginary components).
 
-    The first column of G is the frequencies that SYSCAL evaluated
-    the responses at (this is controlled via the .PFC file used as
-    input to SYSCAL. See [3]).
+    The first column of G is the frequencies that SYSCAL evaluated the
+    responses at (this is controlled via the .PFC file used as input to
+    SYSCAL. See [3]).
 
-    The second column of G is the level that frequency corresponds to
-    (i.e. the elements of column 3 are the numbers n of the .TSn files
-    that each frequency corresponds to).
+    The second column of G is the level that frequency corresponds to (i.e. the
+    elements of column 3 are the numbers n of the .TSn files that each
+    frequency corresponds to).
 
-    The remaining columns of G are the instrument responses for each
-    channel, where G[:, 2] is the complex valued response for channel 1,
-    G[:, 3] is the complex valued response for channel 2, etc.
+    The remaining columns of G are the instrument responses for each channel,
+    where G[:, 2] is the complex valued response for channel 1, G[:, 3] is the
+    complex valued response for channel 2, etc.
 
     Args:
         fname (str): path to the .cts file
@@ -308,6 +314,7 @@ def read_cts(fname):
     Returns:
         G (np.ndarray): complex (freqs x 2+channels) array of channel TFs
         field_type (bool): 0 for box cal, 1 for full system cal
+
     """
 
     # Read the header from the file
@@ -335,37 +342,35 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
                cts_fname="/tmp/TMP.cts",
                field_type=1,
                levels=None):
-    """ Use SYSCAL.exe to compute the system response for a
-    specific set of acquisition parameters and frequencies.
+    """Use SYSCAL.exe to compute the system response for a specific set of
+    acquisition parameters and frequencies.
 
     REQUIRES A WORKING WINE INSTALLATION!
 
-    SYSCAL.exe CAN ONLY HANDLE 1144 FREQUENCIES AT ONCE! Above that,
-    it will still output a response file, but with only 1144 frequencies.
+    SYSCAL.exe CAN ONLY HANDLE 1144 FREQUENCIES AT ONCE! Above that, it will
+    still output a response file, but with only 1144 frequencies.
 
     It's also probably better to supply the levels yourself (using the optional
     arg), rather than letting this function pick them for you, since you will
-    likely be processing each level independently. 
+    likely be processing each level independently.
 
-    NOTE: This script is currently written to be run in
-    either OS X or Linux using wine to call SYSCAL.exe.
-    I don't think it'd be that difficult to make this function
-    clever enough to know whether it's being called from a UNIX
-    or Windows platform.
+    NOTE: This script is currently written to be run in either OS X or Linux
+    using wine to call SYSCAL.exe.  I don't think it'd be that difficult to
+    make this function clever enough to know whether it's being called from a
+    UNIX or Windows platform.
 
-    This function is expecting SYSCAL.exe to reside in ./bin/.
-    It's probably not kosher to be redistributing SYSCAL.exe,
-    so if this package is ever to be distributed, the user will
-    probably have to place SYSCAL.exe in ./bin/ (or specify the
-    location explicitely).
+    This function is expecting SYSCAL.exe to reside in ./bin/.  It's probably
+    not kosher to be redistributing SYSCAL.exe, so if this package is ever to
+    be distributed, the user will probably have to place SYSCAL.exe in ./bin/
+    (or specify the location explicitely).
 
-    The SYSCAL decides which frequencies to calculate the response at
-    based on a parameter file with extension .PFC. This function will fill
-    a brand new .PFC with the frequencies contained in the argument f.
-    The .PFC must also specify the "level" corresponding to each frequency.
-    Since this library was written explicitely to read/write data from
-    an MTU5A with MTC-150 magnetometers, the levels are are assigned
-    based on [4] p. 2 (which are specific to an MTU5A + MTC-150 combo).
+    The SYSCAL decides which frequencies to calculate the response at based on
+    a parameter file with extension .PFC. This function will fill a brand new
+    .PFC with the frequencies contained in the argument f.  The .PFC must also
+    specify the "level" corresponding to each frequency.  Since this library
+    was written explicitely to read/write data from an MTU5A with MTC-150
+    magnetometers, the levels are are assigned based on [4] p. 2 (which are
+    specific to an MTU5A + MTC-150 combo).
 
     Args:
         f (np.ndarray): array of frquencies (Hz) to evaluate G at
@@ -376,10 +381,11 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
         PFC_fname (str): path where a .PFC file input to SYSCAL will be created
         cts_fname (str): path where the SYSCAL result will be created
         field_type (bool): type of response to calc (0 for box, 1 for sys)
-        levels (array like): integer array of recording levels for each freq in f
+        levels (array like): int array of recording levels for each freq in f
 
     Returns:
         G (np.ndarray): complex (freqs x 2+channels) array of channel TFs
+
     """
 
     if platform is "win32" or platform is "cygwin":
@@ -388,7 +394,7 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
 
     # Construct the levels array (assumes sensors are MTC-150 coils)
     if levels is None:
-        TS2_ind = np.logical_and(10400 >= f, f >= 900)  # Technically tops out at 10kHz
+        TS2_ind = np.logical_and(10400 >= f, f >= 900)
         TS3_ind = np.logical_and(900 > f, f >= 39)
         TS4_ind = 39 > f
         levels = np.empty(f.shape, dtype=int)
@@ -413,7 +419,7 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
         CLB_dir = CLB_dir + "/"
     if(CLC_dir[-1] != "/"):
         CLC_dir = CLC_dir + "/"
-    
+
     # Since we assume that we're on a *NIX box, we need to convert
     # all paths for the cmd to windows format, using winepath.
     winepath_cmd = ["winepath", "-w"]
@@ -446,18 +452,17 @@ def get_syscal(f, TBL_fname, CLB_dir, CLC_dir,
 
 
 def rec_to_fields(rec, TBL, mt_units=False):
-    """Convert a record in instrument units to EM field units
-    field units: V/m for E channels, T for H channels, following
-    the formula provided in [5] p 6.
+    """
+    Convert a record in instrument units to EM field units field units: V/m for
+    E channels, T for H channels, following the formula provided in [5] p 6.
 
-    rec is assumed to follow the format [e_x, e_y, h_x, h_y, h_z],
-    although arbitrary orderings of the channels could be incorporated
-    by using the channel indices stored in the .TBL file.
+    rec is assumed to follow the format [e_x, e_y, h_x, h_y, h_z], although
+    arbitrary orderings of the channels could be incorporated by using the
+    channel indices stored in the .TBL file.
 
-    This routine is currently only designed to work with data created
-    by an MTU5A, although other types of hardware could be incorporated
-    as well. The .TBL file's HW field stores type of hardware that
-    created the data.
+    This routine is currently only designed to work with data created by an
+    MTU5A, although other types of hardware could be incorporated as well. The
+    .TBL file's HW field stores type of hardware that created the data.
 
     Args:
         rec (np.ndarray): a (scans x channels) record of data
@@ -486,7 +491,8 @@ def rec_to_fields(rec, TBL, mt_units=False):
 
 
 def get_TAG_datetime(TAG):
-    """Returns the record start time from the tag TAG as a datetime object.
+    """
+    Returns the record start time from the tag TAG as a datetime object.
 
     It might be useful to also have this return the clock offset from GPS time.
 
@@ -494,7 +500,7 @@ def get_TAG_datetime(TAG):
         TAG (np.ndarray): a single TAG (as in those returned from read_TSn)
 
     returns:
-        stim (datetime.datetime): a datetime object containing the record start.
+        stim (datetime.datetime): datetime object containing the record start.
     """
 
     stim = datetime.datetime(int(TAG["century"])*100 + int(TAG["year"]),
@@ -508,11 +514,12 @@ def get_TAG_datetime(TAG):
 
 
 def AMX_to_datetime(amx):
-    """ Convert the weird Phoenix AMX datetime format to a Python datetime object
+    """
+    Convert the weird Phoenix AMX datetime format to a Python datetime object
 
     If the input amx array contains invalid values for a datetime object
-    (e.g. a negative year) then the output datetime object will be set
-    to datetime.date.min
+    (e.g. a negative year) then the output datetime object will be set to
+    datetime.date.min
 
     Args:
         amx: 8 element long int array following the Amx format in [2]
