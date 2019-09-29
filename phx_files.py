@@ -137,10 +137,10 @@ def read_TSn(fname):
 # def write_TBL(fname, TBL, grps, smphs, types):
 #     """ Write a Phoenix .TBL file.
 
-#     Note that unless all of the necessary fields are present in the .TBL file,
-#     there's a good chance it will be useless for running an actual MTU. Thus,
-#     this function is only intended to be useful for editing .TBL files that
-#     have a few incorrect settings.
+#     Note that unless all of the necessary fields are present in the .TBL
+#     file, there's a good chance it will be useless for running an actual
+#     MTU. Thus, this function is only intended to be useful for editing .TBL
+#     files that have a few incorrect settings.
 
 #     Args:
 
@@ -233,49 +233,6 @@ def read_TBL(fname):
     TBL["LNGG"] = ((-1 if EW == "W" else 1)*int(LNGG[0:3]), float(LNGG[3:-2]))
 
     return (TBL, grps, smphs, types)
-
-# def read_TBL_txt(fname):
-#     """ Read .txt files created by the program PRNTTBL.EXE.
-#     PRNTTBL will convert Phoenix .TBL files into an ascii .txt
-#     file.
-
-#     Each line in a TBL.txt is formatted as
-#         code, , , type, val
-
-#     Args:
-#         fname (str): path to the .txt file to be read
-
-#     Returns:
-#         TBL (np.array): array of table entries (dtype=TBL_dt)
-#     """
-
-#     tbl_file = open(fname)
-
-#     # Create an empty TBL file container
-#     TBL = np.empty((1), dtype=TBL_dt)
-
-#     for line in tbl_file:
-#         code = line.split(",")[0]
-
-#         # The NS/EW in lat and lon are seperated from the rest
-#         # of the value field by a comma, so we have to take the
-#         # entire set of trailing elements of the split to make
-#         # sure we can catch it. For all other fields, the 4th
-#         # element actually is the -1th element.
-#         val = line.split(",")[4:-1]
-#         # Recombine the elements comprising value
-#         val = " ".join(val)
-
-#         # Trim whitespace from the strings
-#         code = code.strip()
-#         val = val.strip()
-
-#         if code in TBL.dtype.names:
-#             TBL[code] = val
-
-#     tbl_file.close()
-
-#     return TBL
 
 
 def read_cts(fname):
